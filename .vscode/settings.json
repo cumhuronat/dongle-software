@@ -1,0 +1,44 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.adapterTargetName": "esp32s3",
+    "idf.customExtraPaths": "C:\\Users\\cumhur\\esp\\tools\\tools\\xtensa-esp-elf-gdb\\14.2_20240403\\xtensa-esp-elf-gdb\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\riscv32-esp-elf-gdb\\14.2_20240403\\riscv32-esp-elf-gdb\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\xtensa-esp-elf\\esp-13.2.0_20230928\\xtensa-esp-elf\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\riscv32-esp-elf\\esp-13.2.0_20230928\\riscv32-esp-elf\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\esp32ulp-elf\\2.35_20220830\\esp32ulp-elf\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\cmake\\3.24.0\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\openocd-esp32\\v0.12.0-esp32-20240318\\openocd-esp32\\bin;C:\\Users\\cumhur\\esp\\tools\\tools\\ninja\\1.11.1;C:\\Users\\cumhur\\esp\\tools\\tools\\idf-exe\\1.0.3;C:\\Users\\cumhur\\esp\\tools\\tools\\ccache\\4.8\\ccache-4.8-windows-x86_64;C:\\Users\\cumhur\\esp\\tools\\tools\\dfu-util\\0.11\\dfu-util-0.11-win64;C:\\Users\\cumhur\\esp\\tools\\tools\\esp-rom-elfs\\20230320",
+    "idf.customExtraVars": {
+        "OPENOCD_SCRIPTS": "C:\\Users\\cumhur\\esp\\tools\\tools\\openocd-esp32\\v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
+        "IDF_CCACHE_ENABLE": "1",
+        "ESP_ROM_ELF_DIR": "C:\\Users\\cumhur\\esp\\tools\\tools\\esp-rom-elfs\\20230320/"
+    },
+    "idf.espIdfPathWin": "C:\\Users\\cumhur\\esp\\v5.2.2\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "idf.portWin": "COM31",
+    "idf.pythonBinPathWin": "C:\\Users\\cumhur\\esp\\tools\\python_env\\idf5.2_py3.11_env\\Scripts\\python.exe",
+    "idf.toolsPathWin": "C:\\Users\\cumhur\\esp\\tools",
+    "idf.flashType": "JTAG",
+    "files.associations": {
+        "cstdint": "cpp",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "span": "cpp",
+        "stdint.h": "c",
+        "tinyusb.h": "c",
+        "board.h": "c",
+        "tusb_option.h": "c",
+        "hcd.h": "c",
+        "osal.h": "c",
+        "usbh_classdriver.h": "c",
+        "tusb.h": "c",
+        "usbh.h": "c",
+        "usbh_pvt.h": "c",
+        "tusb_fifo.h": "c",
+        "freertos.h": "c",
+        "tusb_config_esp32.h": "c",
+        "cstddef": "cpp",
+        "*.tcc": "cpp",
+        "ostream": "cpp",
+        "esp_log.h": "c",
+        "esp_debug_helpers.h": "c",
+        "tusb_mcu.h": "c"
+    }
+}
