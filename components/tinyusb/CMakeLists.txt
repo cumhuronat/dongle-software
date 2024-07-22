@@ -46,7 +46,7 @@ set(srcs
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${includes_public}
                        PRIV_INCLUDE_DIRS ${includes_private}
-                       REQUIRES usb_descriptors
+                       REQUIRES main
                        )
 
 target_compile_options(${COMPONENT_LIB} PUBLIC ${compile_options})

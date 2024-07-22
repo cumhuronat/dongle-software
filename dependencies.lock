@@ -4,12 +4,6 @@ dependencies:
     source:
       type: idf
     version: 5.2.2
-  tinyusb:
-    component_hash: null
-    source:
-      path: C:\Projects\idfcore\components\tinyusb
-      type: local
-    version: 0.15.0~9
-manifest_hash: d6b34981d59f5f5a7b372371b522d11c6d4cb850aa12c2615047c7b5f423373c
+manifest_hash: 966d5b612a6d3d7332bc0043141b4e614ef2fa4bab74d8e9e4b3c9b514962345
 target: esp32s3
 version: 1.0.0

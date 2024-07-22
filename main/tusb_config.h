@@ -83,7 +83,7 @@ extern "C" {
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
 
 // Number of hub devices
-#define CFG_TUH_HUB 1
+#define CFG_TUH_HUB 0
 
 // max device support (excluding hub device): 1 hub typically has 4 ports
 #define CFG_TUH_DEVICE_MAX 1

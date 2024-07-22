@@ -1,8 +1,8 @@
-set(srcs main.cpp Adafruit_USBH_Host.cpp hcd_max3421.c)
+set(srcs main.cpp hcd_max3421.c tusb_esp32.c descriptors.c autoreset.c)
 set(incdirs ".")
-idf_component_register(SRCS "${srcs}"
+idf_component_register(SRCS "main.cpp" "${srcs}"
                         INCLUDE_DIRS "${incdirs}"
-                        REQUIRES usb driver)
+                        REQUIRES tinyusb usb driver)
 
                         
 idf_component_get_property(tusb_lib tinyusb COMPONENT_LIB)

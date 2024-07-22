@@ -5,21 +5,25 @@
 #include "freertos/task.h"
 #include "tusb.h"
 #include "sdkconfig.h"
-#include "Adafruit_USBH_Host.h"
 #include "esp_private/periph_ctrl.h"
 #include "esp_private/usb_phy.h"
 #include "esp_log.h"
 #include "esp_check.h"
 #include "esp_err.h"
+#include "driver/gpio.h"
+#include "autoreset.h"
 
 #define DEBUG_BUTTON_GPIO GPIO_NUM_0
-
-Adafruit_USBH_Host USBHost;
+#define CDC_LINE_IDLE 0
+#define CDC_LINE_1 1
+#define CDC_LINE_2 2
+#define CDC_LINE_3 3
 
 static const char *TAG = "example";
 static uint8_t buf[64];
 static uint8_t bufh[64];
 static bool debugOn = false;
+static uint8_t lineState = 0;
 
 static usb_phy_handle_t phy_hdl;
 
@@ -80,12 +84,13 @@ void buttonTask(void *pvParameters)
     }
 }
 
+extern "C"
+{
+    void max3421_init(void);
+}
+
 extern "C" void app_main(void)
 {
-
-    USBHost.begin(1);
-    USBHost.max3421_writeIOPINS1(0xFF, false);
-
     usb_phy_config_t phy_conf = {
         .controller = USB_PHY_CTRL_OTG,
         .target = USB_PHY_TARGET_INT,
@@ -94,33 +99,36 @@ extern "C" void app_main(void)
 
     usb_new_phy(&phy_conf, &phy_hdl);
 
-    tud_init(0);
+    max3421_init();
+    tusb_init();
 
     xTaskCreatePinnedToCore(tuhTask, "tuhTask", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(tudTask, "tudTask", 4096, NULL, 5, NULL, 1);
-
     xTaskCreatePinnedToCore(buttonTask, "buttonTask", 2048, NULL, 5, NULL, 1);
 }
 
 extern "C"
 {
-
     void tud_cdc_rx_cb(uint8_t itf)
     {
         uint32_t count;
         while (1)
         {
             count = tud_cdc_read(buf, 64);
-            if (count <= 0) break;
+            if (count <= 0)
+                break;
             tuh_cdc_write(0, buf, count);
         }
         tuh_cdc_write_flush(0);
     }
 
-    void callback(tuh_xfer_s *xfer)
+    void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *line_coding)
     {
-        (void)xfer;
-        debugLog("Callback");
+        if (line_coding->bit_rate == 123123)
+        {
+            ESP_LOGI(TAG, "Restarting in bootloader mode");
+            usb_persist_restart(phy_hdl);
+        }
     }
 
     void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
@@ -151,8 +159,10 @@ extern "C"
             {
                 break;
             }
-            if (tud_cdc_connected()) tud_cdc_write(bufh, bytes);
+            if (tud_cdc_connected())
+                tud_cdc_write(bufh, bytes);
         }
-        if (tud_cdc_connected()) tud_cdc_write_flush();
+        if (tud_cdc_connected())
+            tud_cdc_write_flush();
     }
 }
