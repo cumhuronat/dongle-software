@@ -15,7 +15,7 @@
     "idf.portWin": "COM31",
     "idf.pythonBinPathWin": "C:\\Users\\cumhur\\esp\\tools\\python_env\\idf5.2_py3.11_env\\Scripts\\python.exe",
     "idf.toolsPathWin": "C:\\Users\\cumhur\\esp\\tools",
-    "idf.flashType": "JTAG",
+    "idf.flashType": "UART",
     "files.associations": {
         "cstdint": "cpp",
         "array": "cpp",
@@ -49,6 +49,19 @@
         "soc.h": "c",
         "usb_phy.h": "c",
         "usb_dc.h": "c",
-        "chip_usb_dw_wrapper.h": "c"
+        "chip_usb_dw_wrapper.h": "c",
+        "debug_helpers.h": "c",
+        "stdlib.h": "c",
+        "cstdarg": "cpp",
+        "hcd_max3421.h": "c",
+        "max3421_helpers.h": "c",
+        "autoreset.h": "c",
+        "usb_periph.h": "c",
+        "usb_struct.h": "c",
+        "usb_reg.h": "c",
+        "usb_wrap_reg.h": "c",
+        "usb_wrap_struct.h": "c",
+        "soc_pins.h": "c",
+        "esp_ota_ops.h": "c"
     }
 }

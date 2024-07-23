@@ -225,13 +225,7 @@
 // Include tusb_config.h and tusb_mcu.h
 //--------------------------------------------------------------------+
 
-// Allow to use command line to change the config name/location
-#ifdef CFG_TUSB_CONFIG_FILE
-  #include CFG_TUSB_CONFIG_FILE
-#else
-  #include "tusb_config.h"
-#endif
-
+#include "tusb_config.h"
 #include "common/tusb_mcu.h"
 
 //--------------------------------------------------------------------
