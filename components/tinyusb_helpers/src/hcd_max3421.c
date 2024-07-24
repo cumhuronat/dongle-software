@@ -627,10 +627,6 @@ static void xact_out(uint8_t rhport, max3421_ep_t *ep, bool switch_ep, bool in_i
         reg_write(rhport, HCTL_ADDR, hctl, in_isr);
     }
 
-    if (xact_len > 64)
-        ESP_LOGE("MAX3421", "xact_len: %d", xact_len);
-
-
     if (!ep->naked)
     {
         if (xact_len > 0)
@@ -852,12 +848,6 @@ static void xfer_complete_isr(uint8_t rhport, max3421_ep_t *ep, xfer_result_t re
     else
     {
         ep->data_toggle = (hrsl & HRSL_SNDTOGRD) ? 1u : 0u;
-    }
-    if (ep->naked)
-    {
-        if (ep_dir == 0)
-            debugLog("unnaked %d", ep->hxfr_bm.ep_num);
-        ep->naked = false;
     }
     ep->state = EP_STATE_IDLE;
     hcd_event_xfer_complete(ep->daddr, ep_addr, ep->xferred_len, result, in_isr);

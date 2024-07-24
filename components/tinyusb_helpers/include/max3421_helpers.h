@@ -8,6 +8,7 @@
 #include "driver/spi_master.h"
 #include "tusb.h"
 #include "macros.h"
+#include "esp_log.h"
 
 #define MAX3421_INTR_PIN GPIO_NUM_9
 #define MAX3421_CS_PIN GPIO_NUM_10

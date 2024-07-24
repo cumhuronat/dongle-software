@@ -41,12 +41,13 @@ void max3421_init(void)
         .data5_io_num = -1,
         .data6_io_num = -1,
         .data7_io_num = -1,
-        .max_transfer_sz = 1024};
+        .max_transfer_sz = 1024
+        };
     ESP_ERROR_CHECK(spi_bus_initialize(MAX3421_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
     spi_device_interface_config_t max3421_cfg = {
         .mode = 0,
-        .clock_speed_hz = 26000000,
+        .clock_speed_hz = SPI_MASTER_FREQ_20M,
         .spics_io_num = -1,
         .queue_size = 1};
     ESP_ERROR_CHECK(spi_bus_add_device(MAX3421_SPI_HOST, &max3421_cfg, &max3421_spi));
@@ -97,6 +98,6 @@ bool tuh_max3421_spi_xfer_api(uint8_t rhport, uint8_t const *tx_buf, uint8_t *rx
         .tx_buffer = tx_buf,
         .rx_buffer = rx_buf};
 
-    ESP_ERROR_CHECK(spi_device_transmit(max3421_spi, &xact));
+    ESP_ERROR_CHECK(spi_device_polling_transmit(max3421_spi, &xact));
     return true;
 }

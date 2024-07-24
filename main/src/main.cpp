@@ -2,12 +2,16 @@
 
 static uint8_t pcBuffer[64];
 static uint8_t cncBuffer[64];
+static int tudLastPoint = 0;
+static int tuhLastPoint = 0;
+static SemaphoreHandle_t xSemaphoreTUD = NULL;
+static SemaphoreHandle_t xSemaphoreTUH = NULL;
 
 void tuhTask(void *pvParameters)
 {
     while (1)
     {
-        tuh_task();
+        tuh_task_ext(1000, 0);
     }
 }
 
@@ -15,8 +19,38 @@ void tudTask(void *pvParameters)
 {
     while (1)
     {
-        tud_task();
+        tud_task_ext(1000, 0);
     }
+}
+
+void showSemaphoreStatus(void)
+{
+    BaseType_t tudSemCount = uxSemaphoreGetCount(xSemaphoreTUD);
+    BaseType_t tuhSemCount = uxSemaphoreGetCount(xSemaphoreTUH);
+
+    ESP_LOGI("SEMAPHORE_STATUS", "TUD Semaphore: %s (Count: %d)",
+             tudSemCount > 0 ? "Available" : "Not Available",
+             tudSemCount);
+
+    ESP_LOGI("SEMAPHORE_STATUS", "TUH Semaphore: %s (Count: %d)",
+             tuhSemCount > 0 ? "Available" : "Not Available",
+             tuhSemCount);
+
+    ESP_LOGI("SEMAPHORE_STATUS", "TUD Last Point: %d", tudLastPoint);
+    ESP_LOGI("SEMAPHORE_STATUS", "TUH Last Point: %d", tuhLastPoint);
+
+    ESP_LOGI("SEMAPHORE_STATUS", "tud_cdc_available: %u", (unsigned int)tud_cdc_available());
+    ESP_LOGI("SEMAPHORE_STATUS", "tud_cdc_n_write_available: %u", (unsigned int)tud_cdc_n_write_available(0));
+    ESP_LOGI("SEMAPHORE_STATUS", "tuh_cdc_read_available: %u", (unsigned int)tuh_cdc_read_available(0));
+    ESP_LOGI("SEMAPHORE_STATUS", "tuh_cdc_write_available: %u", (unsigned int)tuh_cdc_write_available(0));
+
+
+
+    xSemaphoreGive(xSemaphoreTUD);
+    xSemaphoreGive(xSemaphoreTUH);
+
+    tud_cdc_read(pcBuffer, sizeof(pcBuffer));
+    tuh_cdc_read(0, cncBuffer, sizeof(cncBuffer));
 }
 
 void buttonTask(void *pvParameters)
@@ -26,9 +60,65 @@ void buttonTask(void *pvParameters)
         if (gpio_get_level(DEBUG_BUTTON_GPIO) == 0)
         {
             setDebug(true);
-            vTaskDelete(NULL);
+            showSemaphoreStatus();
+            // vTaskDelete(NULL);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+void tudReadTask(void *pvParameters)
+{
+    while (1)
+    {
+        if (xSemaphoreTake(xSemaphoreTUD, portMAX_DELAY))
+        {
+            tudLastPoint = 1;
+            size_t bytes;
+            while (1)
+            {
+                tudLastPoint = 2;
+                bytes = tud_cdc_read(pcBuffer, sizeof(pcBuffer));
+                tudLastPoint = 3;
+                if (bytes <= 0)
+                    break;
+                tudLastPoint = 4;
+                tuh_cdc_write(0, pcBuffer, bytes);
+                tudLastPoint = 5;
+                tuh_cdc_write_flush(0);
+                tudLastPoint = 6;
+                taskYIELD();
+                tudLastPoint = 7;
+            }
+        }
+    }
+}
+
+
+void tuhReadTask(void *pvParameters)
+{
+    while (1)
+    {
+        if (xSemaphoreTake(xSemaphoreTUH, portMAX_DELAY))
+        {
+            tuhLastPoint = 1;
+            size_t bytes;
+            while (1)
+            {
+                tuhLastPoint = 2;
+                bytes = tuh_cdc_read(0, cncBuffer, sizeof(cncBuffer));
+                tuhLastPoint = 3;
+                if (bytes <= 0)
+                    break;
+                tuhLastPoint = 4;
+                tud_cdc_write(cncBuffer, bytes);
+                tuhLastPoint = 5;
+                tud_cdc_write_flush();
+                tuhLastPoint = 6;
+                taskYIELD();
+                tuhLastPoint = 7;
+            }
+        }
     }
 }
 
@@ -38,28 +128,26 @@ extern "C" void app_main(void)
     max3421_init();
     tuh_init(1);
 
+    xSemaphoreTUD = xSemaphoreCreateBinary();
+    xSemaphoreTUH = xSemaphoreCreateBinary();
+
     xTaskCreatePinnedToCore(tuhTask, "tuhTask", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(tuhReadTask, "tuhReadTask", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(tudTask, "tudTask", 4096, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(buttonTask, "buttonTask", 2048, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(tudReadTask, "tudReadTask", 4096, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(buttonTask, "buttonTask", 2048, NULL, 1, NULL, 1);
 }
 
 extern "C"
 {
     void tud_cdc_rx_cb(uint8_t itf)
     {
-        debugLog("tudc\r\n");
-        uint32_t count;
-        while (1)
-        {
-            count = tud_cdc_read(pcBuffer, 64);
-            if (count <= 0)
-                break;
-            if (!tuh_cdc_write_available(0))
-                return;
-            tuh_cdc_write(0, pcBuffer, count);
-            taskYIELD();
-        }
-        tuh_cdc_write_flush(0);
+        xSemaphoreGive(xSemaphoreTUD);
+    }
+
+    void tud_cdc_tx_complete_cb(uint8_t itf)
+    {
+        xSemaphoreGive(xSemaphoreTUD);
     }
 
     void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *line_coding)
@@ -91,19 +179,11 @@ extern "C"
 
     void tuh_cdc_rx_cb(uint8_t idx)
     {
-        size_t bytes;
-        while (1)
-        {
-            bytes = tuh_cdc_read(idx, cncBuffer, 64);
-            if (bytes <= 0)
-            {
-                break;
-            }
-            if (!tud_cdc_write_available() || !tud_cdc_connected())
-                return;
-            tud_cdc_write(cncBuffer, bytes);
-            taskYIELD();
-        }
-        tud_cdc_write_flush();
+        xSemaphoreGive(xSemaphoreTUH);
+    }
+
+    void tuh_cdc_tx_complete_cb(uint8_t idx)
+    {
+        xSemaphoreGive(xSemaphoreTUH);
     }
 }
