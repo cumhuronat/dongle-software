@@ -11,7 +11,7 @@ void tuhTask(void *pvParameters)
 {
     while (1)
     {
-        tuh_task_ext(1000, 0);
+        tuh_task();
     }
 }
 
@@ -19,7 +19,7 @@ void tudTask(void *pvParameters)
 {
     while (1)
     {
-        tud_task_ext(1000, 0);
+        tud_task();
     }
 }
 
@@ -46,12 +46,15 @@ void showSemaphoreStatus(void)
 
 
 
-    xSemaphoreGive(xSemaphoreTUD);
-    xSemaphoreGive(xSemaphoreTUH);
+    //xSemaphoreGive(xSemaphoreTUD);
+    //xSemaphoreGive(xSemaphoreTUH);
 
-    tud_cdc_read(pcBuffer, sizeof(pcBuffer));
-    tuh_cdc_read(0, cncBuffer, sizeof(cncBuffer));
+    //tud_cdc_read(pcBuffer, sizeof(pcBuffer));
+    //tuh_cdc_read(0, cncBuffer, sizeof(cncBuffer));
 }
+
+
+
 
 void buttonTask(void *pvParameters)
 {
@@ -61,8 +64,11 @@ void buttonTask(void *pvParameters)
         {
             setDebug(true);
             showSemaphoreStatus();
+            //log_debug_data();
+            //clearFrameInterrupt(1, 0);
             // vTaskDelete(NULL);
         }
+        
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -125,7 +131,8 @@ void tuhReadTask(void *pvParameters)
 extern "C" void app_main(void)
 {
     switch_to_tinyusb();
-    max3421_init();
+    tud_init(0);
+    //tud_disconnect();
     tuh_init(1);
 
     xSemaphoreTUD = xSemaphoreCreateBinary();
@@ -133,9 +140,10 @@ extern "C" void app_main(void)
 
     xTaskCreatePinnedToCore(tuhTask, "tuhTask", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(tuhReadTask, "tuhReadTask", 4096, NULL, 5, NULL, 1);
-    xTaskCreatePinnedToCore(tudTask, "tudTask", 4096, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(tudReadTask, "tudReadTask", 4096, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(buttonTask, "buttonTask", 2048, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(tudTask, "tudTask", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(tudReadTask, "tudReadTask", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(buttonTask, "buttonTask", 8192, NULL, 1, NULL, 1);
+    //xTaskCreatePinnedToCore(refresher, "refresherTask", 4096, NULL, 1, NULL, 1);
 }
 
 extern "C"
@@ -160,6 +168,7 @@ extern "C"
 
     void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
     {
+        ESP_LOGI("tud_cdc_line_state_cb", "DTR: %d, RTS: %d", dtr, rts);
         uint16_t const line_state = (dtr ? CDC_CONTROL_LINE_STATE_DTR : 0) |
                                     (rts ? CDC_CONTROL_LINE_STATE_RTS : 0);
         tuh_cdc_set_control_line_state(0, line_state, NULL, 0);
@@ -167,13 +176,14 @@ extern "C"
 
     void tuh_cdc_mount_cb(uint8_t idx)
     {
-        tud_init(0);
+        ESP_LOGI("tuh_cdc_mount_cb", "Mounting CDC %d", idx);
         tud_connect();
         tuh_cdc_set_baudrate(idx, 115200, NULL, 0);
     }
 
     void tuh_cdc_umount_cb(uint8_t idx)
     {
+        ESP_LOGI("tuh_cdc_umount_cb", "Unmounting CDC %d", idx);
         tud_disconnect();
     }
 

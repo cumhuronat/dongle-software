@@ -511,7 +511,6 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr) {
 
     switch (event.event_id) {
       case HCD_EVENT_DEVICE_ATTACH:
-      ESP_LOGI("USBH", "USBH DEVICE ATTACH");
         // due to the shared _usbh_ctrl_buf, we must complete enumerating one device before enumerating another one.
         // TODO better to have an separated queue for newly attached devices
         if (_dev0.enumerating) {
@@ -526,7 +525,6 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr) {
             return;
           }
         } else {
-            ESP_LOGI("USBH", "USBH DEVICE ATTACHING");
           TU_LOG_USBH("[%u:] USBH DEVICE ATTACH\r\n", event.rhport);
           _dev0.enumerating = 1;
           enum_new_device(&event);

@@ -18,7 +18,8 @@ set(includes_public
     )
 
 set(srcs
-    "src/portable/espressif/esp32sx/dcd_esp32sx.c"
+#    "src/portable/espressif/esp32sx/dcd_esp32sx.c"
+    "src/portable/synopsys/dwc2/dcd_dwc2.c"
     "src/host/usbh.c"
     "src/class/cdc/cdc_host.c"
     "src/host/hub.c"

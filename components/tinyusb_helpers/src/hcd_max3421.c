@@ -1,308 +1,136 @@
 #include "hcd_max3421.h"
 
-enum
-{
-    CMDBYTE_WRITE = 0x02,
-};
-
-enum
-{
-    RCVVFIFO_ADDR = 1u << 3,  // 0x08
-    SNDFIFO_ADDR = 2u << 3,   // 0x10
-    SUDFIFO_ADDR = 4u << 3,   // 0x20
-    RCVBC_ADDR = 6u << 3,     // 0x30
-    SNDBC_ADDR = 7u << 3,     // 0x38
-    USBIRQ_ADDR = 13u << 3,   // 0x68
-    USBIEN_ADDR = 14u << 3,   // 0x70
-    USBCTL_ADDR = 15u << 3,   // 0x78
-    CPUCTL_ADDR = 16u << 3,   // 0x80
-    PINCTL_ADDR = 17u << 3,   // 0x88
-    REVISION_ADDR = 18u << 3, // 0x90
-    // 19 is not used
-    IOPINS1_ADDR = 20u << 3, // 0xA0
-    IOPINS2_ADDR = 21u << 3, // 0xA8
-    GPINIRQ_ADDR = 22u << 3, // 0xB0
-    GPINIEN_ADDR = 23u << 3, // 0xB8
-    GPINPOL_ADDR = 24u << 3, // 0xC0
-    HIRQ_ADDR = 25u << 3,    // 0xC8
-    HIEN_ADDR = 26u << 3,    // 0xD0
-    MODE_ADDR = 27u << 3,    // 0xD8
-    PERADDR_ADDR = 28u << 3, // 0xE0
-    HCTL_ADDR = 29u << 3,    // 0xE8
-    HXFR_ADDR = 30u << 3,    // 0xF0
-    HRSL_ADDR = 31u << 3,    // 0xF8
-};
-
-enum
-{
-    USBIRQ_OSCOK_IRQ = 1u << 0,
-    USBIRQ_NOVBUS_IRQ = 1u << 5,
-    USBIRQ_VBUS_IRQ = 1u << 6,
-};
-
-enum
-{
-    USBCTL_PWRDOWN = 1u << 4,
-    USBCTL_CHIPRES = 1u << 5,
-};
-
-enum
-{
-    CPUCTL_IE = 1u << 0,
-    CPUCTL_PULSEWID0 = 1u << 6,
-    CPUCTL_PULSEWID1 = 1u << 7,
-};
-
-enum
-{
-    PINCTL_GPXA = 1u << 0,
-    PINCTL_GPXB = 1u << 1,
-    PINCTL_POSINT = 1u << 2,
-    PINCTL_INTLEVEL = 1u << 3,
-    PINCTL_FDUPSPI = 1u << 4,
-};
-
-enum
-{
-    HIRQ_BUSEVENT_IRQ = 1u << 0,
-    HIRQ_RWU_IRQ = 1u << 1,
-    HIRQ_RCVDAV_IRQ = 1u << 2,
-    HIRQ_SNDBAV_IRQ = 1u << 3,
-    HIRQ_SUSDN_IRQ = 1u << 4,
-    HIRQ_CONDET_IRQ = 1u << 5,
-    HIRQ_FRAME_IRQ = 1u << 6,
-    HIRQ_HXFRDN_IRQ = 1u << 7,
-};
-
-enum
-{
-    MODE_HOST = 1u << 0,
-    MODE_LOWSPEED = 1u << 1,
-    MODE_HUBPRE = 1u << 2,
-    MODE_SOFKAENAB = 1u << 3,
-    MODE_SEPIRQ = 1u << 4,
-    MODE_DELAYISO = 1u << 5,
-    MODE_DMPULLDN = 1u << 6,
-    MODE_DPPULLDN = 1u << 7,
-};
-
-enum
-{
-    HCTL_BUSRST = 1u << 0,
-    HCTL_FRMRST = 1u << 1,
-    HCTL_SAMPLEBUS = 1u << 2,
-    HCTL_SIGRSM = 1u << 3,
-    HCTL_RCVTOG0 = 1u << 4,
-    HCTL_RCVTOG1 = 1u << 5,
-    HCTL_SNDTOG0 = 1u << 6,
-    HCTL_SNDTOG1 = 1u << 7,
-};
-
-enum
-{
-    HXFR_EPNUM_MASK = 0x0f,
-    HXFR_SETUP = 1u << 4,
-    HXFR_OUT_NIN = 1u << 5,
-    HXFR_ISO = 1u << 6,
-    HXFR_HS = 1u << 7,
-};
-
-enum
-{
-    HRSL_RESULT_MASK = 0x0f,
-    HRSL_RCVTOGRD = 1u << 4,
-    HRSL_SNDTOGRD = 1u << 5,
-    HRSL_KSTATUS = 1u << 6,
-    HRSL_JSTATUS = 1u << 7,
-};
-
-enum
-{
-    HRSL_SUCCESS = 0,
-    HRSL_BUSY,
-    HRSL_BAD_REQ,
-    HRSL_UNDEF,
-    HRSL_NAK,
-    HRSL_STALL,
-    HRSL_TOG_ERR,
-    HRSL_WRONG_PID,
-    HRSL_BAD_BYTECOUNT,
-    HRSL_PID_ERR,
-    HRSL_PKT_ERR,
-    HRSL_CRC_ERR,
-    HRSL_K_ERR,
-    HRSL_J_ERR,
-    HRSL_TIMEOUT,
-    HRSL_BABBLE,
-};
-
-enum
-{
-    DEFAULT_HIEN = HIRQ_CONDET_IRQ | HIRQ_FRAME_IRQ | HIRQ_HXFRDN_IRQ | HIRQ_RCVDAV_IRQ
-};
-
-enum
-{
-    MAX_NAK_DEFAULT = 1 // Number of NAK per endpoint per usb frame
-};
-
-enum
-{
-    EP_STATE_IDLE = 0,
-    EP_STATE_COMPLETE = 1,
-    EP_STATE_ABORTING = 2,
-    EP_STATE_ATTEMPT_1 = 3, // pending 1st attempt
-    EP_STATE_ATTEMPT_MAX = 15
-};
-
-//--------------------------------------------------------------------+
-//
-//--------------------------------------------------------------------+
-
-typedef struct
-{
-    uint8_t daddr;
-
-    union
-    {
-        ;
-        struct TU_ATTR_PACKED
-        {
-            uint8_t ep_num : 4;
-            uint8_t is_setup : 1;
-            uint8_t is_out : 1;
-            uint8_t is_iso : 1;
-        } hxfr_bm;
-
-        uint8_t hxfr;
-    };
-
-    struct TU_ATTR_PACKED
-    {
-        uint8_t state : 4;
-        uint8_t data_toggle : 1;
-        uint16_t packet_size : 11;
-    };
-    bool naked;
-    uint16_t total_len;
-    uint16_t xferred_len;
-    uint8_t *buf;
-} max3421_ep_t;
-
-TU_VERIFY_STATIC(sizeof(max3421_ep_t) == 16, "size is not correct");
-
-typedef struct
-{
-    volatile uint16_t frame_count;
-
-    // cached register
-    uint8_t sndbc;
-    uint8_t hirq;
-    uint8_t hien;
-    uint8_t mode;
-    uint8_t peraddr;
-    uint8_t hxfr;
-
-    atomic_flag busy; // busy transferring
-
-#if OSAL_MUTEX_REQUIRED
-    OSAL_MUTEX_DEF(spi_mutexdef);
-    osal_mutex_t spi_mutex;
-#endif
-
-    max3421_ep_t ep[CFG_TUH_MAX3421_ENDPOINT_TOTAL]; // [0] is reserved for addr0
-} max3421_data_t;
 
 static max3421_data_t _hcd_data;
 
-// max NAK before giving up in a frame. 0 means infinite NAKs
 static tuh_configure_max3421_t _tuh_cfg = {
     .max_nak = MAX_NAK_DEFAULT,
-    .cpuctl = 0, // default: INT pulse width = 10.6 us
-    .pinctl = 0, // default: negative edge interrupt
+    .cpuctl = 0,
+    .pinctl = 0,
 };
 
+static spi_device_handle_t max3421_spi;
+SemaphoreHandle_t max3421_intr_sem;
+static bool intEnabled = false;
 
-//--------------------------------------------------------------------+
-// SPI Commands and Helper
-//--------------------------------------------------------------------+
 
-#define reg_read tuh_max3421_reg_read
-#define reg_write tuh_max3421_reg_write
-
-static void max3421_spi_lock(uint8_t rhport, bool in_isr)
+static void max3421_intr_task(void *param)
 {
-    (void)osal_mutex_lock(_hcd_data.spi_mutex, OSAL_TIMEOUT_WAIT_FOREVER);
-    tuh_max3421_int_api(rhport, false);
+    (void)param;
 
-    // assert CS
-    tuh_max3421_spi_cs_api(rhport, true);
+    while (1)
+    {
+        if(intEnabled) tuh_int_handler(BOARD_TUH_RHPORT, false);
+        vTaskDelay(1);
+    }
 }
 
-static void max3421_spi_unlock(uint8_t rhport, bool in_isr)
+static void spi_init(void)
 {
-    // de-assert CS
-    tuh_max3421_spi_cs_api(rhport, false);
+    gpio_set_direction(MAX3421_CS_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level(MAX3421_CS_PIN, 1);
 
-    // mutex unlock and re-enable interrupt
-    tuh_max3421_int_api(rhport, true);
-    (void)osal_mutex_unlock(_hcd_data.spi_mutex);
+    spi_bus_config_t buscfg = {
+        .miso_io_num = MAX3421_MISO_PIN,
+        .mosi_io_num = MAX3421_MOSI_PIN,
+        .sclk_io_num = MAX3421_SCLK_PIN,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .data4_io_num = -1,
+        .data5_io_num = -1,
+        .data6_io_num = -1,
+        .data7_io_num = -1,
+        .max_transfer_sz = 1024
+        };
+    ESP_ERROR_CHECK(spi_bus_initialize(MAX3421_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
+
+    spi_device_interface_config_t max3421_cfg = {
+        .mode = 0,
+        .clock_speed_hz = SPI_MASTER_FREQ_20M,
+        .spics_io_num = MAX3421_CS_PIN,
+        .queue_size = 1};
+    ESP_ERROR_CHECK(spi_bus_add_device(MAX3421_SPI_HOST, &max3421_cfg, &max3421_spi));
+    
+    xTaskCreatePinnedToCore(max3421_intr_task, "max3421 intr", 2048, NULL, configMAX_PRIORITIES - 2, NULL, 1);
 }
 
-uint8_t tuh_max3421_reg_read(uint8_t rhport, uint8_t reg, bool in_isr)
-{
-    uint8_t tx_buf[2] = {reg, 0};
-    uint8_t rx_buf[2] = {0, 0};
 
-    max3421_spi_lock(rhport, in_isr);
-    bool ret = tuh_max3421_spi_xfer_api(rhport, tx_buf, rx_buf, 2);
-    max3421_spi_unlock(rhport, in_isr);
+static uint8_t IRAM_ATTR reg_read(uint8_t rhport, uint8_t reg, bool in_isr)
+{
+    spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
+    t.length = 2 * 8;
+    t.tx_data[0] = reg;
+    t.tx_data[1] = 0;
+    t.flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
+    t.rxlength = 2 * 8;
+
+    spi_device_acquire_bus(max3421_spi, portMAX_DELAY);
+    ESP_ERROR_CHECK(spi_device_polling_transmit(max3421_spi, &t));
+    spi_device_release_bus(max3421_spi);
+    _hcd_data.hirq = t.rx_data[0];
+
+    return t.rx_data[1];
+}
+
+static bool IRAM_ATTR reg_write(uint8_t rhport, uint8_t reg, uint8_t data, bool in_isr)
+{
+    spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
+    t.length = 2*8;
+    t.tx_data[0] = reg | CMDBYTE_WRITE;
+    t.tx_data[1] = data;
+    t.flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
+
+    spi_device_acquire_bus(max3421_spi, portMAX_DELAY);
+    ESP_ERROR_CHECK(spi_device_polling_transmit(max3421_spi, &t));
+    spi_device_release_bus(max3421_spi);
+    _hcd_data.hirq = t.rx_data[0];
+
+    return true;
+}
+
+static void IRAM_ATTR fifo_write(uint8_t rhport, uint8_t reg, uint8_t const *buffer, uint16_t len, bool in_isr)
+{
+    uint8_t tx_buf[1 + len];
+    tx_buf[0] = reg | CMDBYTE_WRITE;
+    memcpy(&tx_buf[1], buffer, len);
+
+    uint8_t rx_buf[1 + len];
+    
+    spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
+    t.length = 8 + len*8;
+    t.tx_buffer = tx_buf;
+    t.rx_buffer = rx_buf;
+
+    spi_device_acquire_bus(max3421_spi, portMAX_DELAY);
+    ESP_ERROR_CHECK(spi_device_polling_transmit(max3421_spi, &t));
+    spi_device_release_bus(max3421_spi);
 
     _hcd_data.hirq = rx_buf[0];
-    return ret ? rx_buf[1] : 0;
 }
 
-bool tuh_max3421_reg_write(uint8_t rhport, uint8_t reg, uint8_t data, bool in_isr)
+static void IRAM_ATTR fifo_read(uint8_t rhport, uint8_t *buffer, uint16_t len, bool in_isr)
 {
-    uint8_t tx_buf[2] = {reg | CMDBYTE_WRITE, data};
-    uint8_t rx_buf[2] = {0, 0};
-
-    max3421_spi_lock(rhport, in_isr);
-    bool ret = tuh_max3421_spi_xfer_api(rhport, tx_buf, rx_buf, 2);
-    max3421_spi_unlock(rhport, in_isr);
-
-    // HIRQ register since we are in full-duplex mode
-    _hcd_data.hirq = rx_buf[0];
-
-    return ret;
-}
-
-static void fifo_write(uint8_t rhport, uint8_t reg, uint8_t const *buffer, uint16_t len, bool in_isr)
-{
-    uint8_t hirq;
-    reg |= CMDBYTE_WRITE;
-
-    max3421_spi_lock(rhport, in_isr);
-
-    tuh_max3421_spi_xfer_api(rhport, &reg, &hirq, 1);
-    _hcd_data.hirq = hirq;
-    tuh_max3421_spi_xfer_api(rhport, buffer, NULL, len);
-
-    max3421_spi_unlock(rhport, in_isr);
-}
-
-static void fifo_read(uint8_t rhport, uint8_t *buffer, uint16_t len, bool in_isr)
-{
-    uint8_t hirq;
     uint8_t const reg = RCVVFIFO_ADDR;
+    uint8_t rx_buf[1 + len];
 
-    max3421_spi_lock(rhport, in_isr);
+    uint8_t tx_buf[1 + len];
+    tx_buf[0] = reg;
 
-    tuh_max3421_spi_xfer_api(rhport, &reg, &hirq, 1);
-    _hcd_data.hirq = hirq;
-    tuh_max3421_spi_xfer_api(rhport, NULL, buffer, len);
+    spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
+    t.length = 8 + len*8;
+    t.tx_buffer = tx_buf;
+    t.rx_buffer = rx_buf;
 
-    max3421_spi_unlock(rhport, in_isr);
+
+    spi_device_acquire_bus(max3421_spi, portMAX_DELAY);
+    ESP_ERROR_CHECK(spi_device_polling_transmit(max3421_spi, &t));
+    spi_device_release_bus(max3421_spi);
+    _hcd_data.hirq = rx_buf[0];
+    memcpy(buffer, rx_buf+1, len);
 }
 
 //------------- register write helper -------------//
@@ -405,14 +233,10 @@ TU_ATTR_ALWAYS_INLINE static inline bool is_ep_pending(max3421_ep_t const *ep)
            (_tuh_cfg.max_nak == 0 || state < EP_STATE_ATTEMPT_1 + _tuh_cfg.max_nak);
 }
 
-// Find the next pending endpoint using round-robin scheduling, starting from next endpoint.
-// return NULL if not found
-// TODO respect interrupt endpoint's interval
 static max3421_ep_t *find_next_pending_ep(max3421_ep_t *cur_ep)
 {
     size_t const idx = (size_t)(cur_ep - _hcd_data.ep);
 
-    // starting from next endpoint
     for (size_t i = idx + 1; i < CFG_TUH_MAX3421_ENDPOINT_TOTAL; i++)
     {
         max3421_ep_t *ep = &_hcd_data.ep[i];
@@ -422,7 +246,6 @@ static max3421_ep_t *find_next_pending_ep(max3421_ep_t *cur_ep)
         }
     }
 
-    // wrap around including current endpoint
     for (size_t i = 0; i <= idx; i++)
     {
         max3421_ep_t *ep = &_hcd_data.ep[i];
@@ -433,6 +256,135 @@ static max3421_ep_t *find_next_pending_ep(max3421_ep_t *cur_ep)
     }
 
     return NULL;
+}
+
+#define ACTION_LOG_SIZE 40
+static char action_log[ACTION_LOG_SIZE][32]; // Store actions in fixed-length strings
+static uint8_t action_log_index = 0;
+static bool locked = false;
+
+void log_action(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vsnprintf(action_log[action_log_index], sizeof(action_log[0]), format, args); // Formatted logging
+    va_end(args);
+    action_log_index = (action_log_index + 1) % ACTION_LOG_SIZE;
+}
+
+void print_action_log()
+{
+    ESP_LOGI("ACTION_LOG", "Recent Actions:");
+    for (int i = 0; i < ACTION_LOG_SIZE; i++)
+    {
+        uint8_t index = (action_log_index + i) % ACTION_LOG_SIZE;
+        if (strlen(action_log[index]) > 0)
+        { // Check if the log entry is not empty
+            ESP_LOGI("ACTION_LOG", "%s", action_log[index]);
+        }
+    }
+}
+
+void print_endpoint_status(void)
+{
+    // Buffer to hold task list information
+    char taskListBuffer[1024];
+
+    // Get task list
+    vTaskList(taskListBuffer);
+
+    // Print the task list
+    ESP_LOGI("Task List", "\nTask Name\t\tState\tPrio\tStack\tTask#\n%s", taskListBuffer);
+    bool isBusy = !atomic_flag_test_and_set(&_hcd_data.busy);
+    if (!isBusy)
+        atomic_flag_clear(&_hcd_data.busy);
+    // Log controller status
+    ESP_LOGI("Controller Status", "frame_count=%u, sndbc=%u, hirq=%u, hien=%u, mode=%u, peraddr=%u, hxfr=%u, busy=%d, locked=%d",
+             _hcd_data.frame_count,
+             _hcd_data.sndbc,
+             _hcd_data.hirq,
+             _hcd_data.hien,
+             _hcd_data.mode,
+             _hcd_data.peraddr,
+             _hcd_data.hxfr,
+             isBusy,
+             locked);
+
+    // Log configuration settings
+    ESP_LOGI("Configuration", "max_nak=%u, cpuctl=%u, pinctl=%u",
+             _tuh_cfg.max_nak,
+             _tuh_cfg.cpuctl,
+             _tuh_cfg.pinctl);
+
+    // Log endpoint status
+    for (size_t i = 0; i < CFG_TUH_MAX3421_ENDPOINT_TOTAL; i++)
+    {
+        max3421_ep_t *ep = &_hcd_data.ep[i];
+        ESP_LOGI("Endpoint Status", "EP[%u]: daddr=%u, ep_num=%u, is_setup=%u, is_out=%u, is_iso=%u, state=%u, packet_size=%u, total_len=%u, xferred_len=%u, retry_count=%u, data_toggle=%u, buf=%p",
+                 i,
+                 ep->daddr,
+                 ep->hxfr_bm.ep_num,
+                 ep->hxfr_bm.is_setup,
+                 ep->hxfr_bm.is_out,
+                 ep->hxfr_bm.is_iso,
+                 ep->state,
+                 ep->packet_size,
+                 ep->total_len,
+                 ep->xferred_len,
+                 ep->retry_count,
+                 ep->data_toggle,
+                 ep->buf);
+    }
+}
+
+void hex_to_binary_str(uint8_t hex, char *binary_str)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        binary_str[7 - i] = (hex & (1 << i)) ? '1' : '0';
+    }
+    binary_str[8] = '\0'; // Null-terminate the string
+}
+
+void log_general_info_as_binary(void)
+{
+    uint8_t hien = reg_read(1, HIEN_ADDR, false);
+    uint8_t hirq = reg_read(1, HIRQ_ADDR, false);
+    uint8_t mode = reg_read(1, MODE_ADDR, false);
+    uint8_t peraddr = reg_read(1, PERADDR_ADDR, false);
+    uint8_t hctl = reg_read(1, HCTL_ADDR, false);
+    uint8_t hxfr = reg_read(1, HXFR_ADDR, false);
+    uint8_t hrsl = reg_read(1, HRSL_ADDR, false);
+
+    char binary_str[9];
+
+    hex_to_binary_str(hien, binary_str);
+    ESP_LOGI("General Info", "HIEN: 0x%02X (%s)", hien, binary_str);
+
+    hex_to_binary_str(hirq, binary_str);
+    ESP_LOGI("General Info", "HIRQ: 0x%02X (%s)", hirq, binary_str);
+
+    hex_to_binary_str(mode, binary_str);
+    ESP_LOGI("General Info", "Mode: 0x%02X (%s)", mode, binary_str);
+
+    hex_to_binary_str(peraddr, binary_str);
+    ESP_LOGI("General Info", "PERADDR: 0x%02X (%s)", peraddr, binary_str);
+
+    hex_to_binary_str(hctl, binary_str);
+    ESP_LOGI("General Info", "HCTL: 0x%02X (%s)", hctl, binary_str);
+
+    hex_to_binary_str(hxfr, binary_str);
+    ESP_LOGI("General Info", "HXFR: 0x%02X (%s)", hxfr, binary_str);
+
+    hex_to_binary_str(hrsl, binary_str);
+    ESP_LOGI("General Info", "HRSL: 0x%02X (%s)", hrsl, binary_str);
+}
+
+void log_debug_data(void)
+{
+    print_action_log();
+    print_endpoint_status();
+    log_general_info_as_binary();
 }
 
 //--------------------------------------------------------------------+
@@ -455,8 +407,8 @@ bool hcd_configure(uint8_t rhport, uint32_t cfg_id, const void *cfg_param)
 bool hcd_init(uint8_t rhport)
 {
     (void)rhport;
-
-    tuh_max3421_int_api(rhport, false);
+    hcd_int_disable(rhport);
+    spi_init();
 
     TU_LOG2_INT(sizeof(max3421_ep_t));
     TU_LOG2_INT(sizeof(max3421_data_t));
@@ -464,45 +416,22 @@ bool hcd_init(uint8_t rhport)
 
     tu_memclr(&_hcd_data, sizeof(_hcd_data));
     _hcd_data.peraddr = 0xff; // invalid
-
-#if OSAL_MUTEX_REQUIRED
     _hcd_data.spi_mutex = osal_mutex_create(&_hcd_data.spi_mutexdef);
-#endif
-
-    // NOTE: driver does not seem to work without nRST pin signal
-
-    // full duplex, interrupt negative edge
     reg_write(rhport, PINCTL_ADDR, _tuh_cfg.pinctl | PINCTL_FDUPSPI, false);
-
-    // v1 is 0x01, v2 is 0x12, v3 is 0x13
-    uint8_t const revision = reg_read(rhport, REVISION_ADDR, false);
-    ESP_LOGI("MAX3471", "REVi: 0x%02X", revision);
-    TU_ASSERT(revision == 0x01 || revision == 0x12 || revision == 0x13, false);
 
     // reset
     reg_write(rhport, USBCTL_ADDR, USBCTL_CHIPRES, false);
     reg_write(rhport, USBCTL_ADDR, 0, false);
     while (!(reg_read(rhport, USBIRQ_ADDR, false) & USBIRQ_OSCOK_IRQ))
     {
-        // wait for oscillator to stabilize
+        vTaskDelay(1);
     }
 
-    // Mode: Host and DP/DM pull down
     mode_write(rhport, MODE_DPPULLDN | MODE_DMPULLDN | MODE_HOST, false);
-
-    // frame reset & bus reset, this will trigger CONDET IRQ if device is already connected
     reg_write(rhport, HCTL_ADDR, HCTL_BUSRST | HCTL_FRMRST, false);
-
-    // clear all previously pending IRQ
     hirq_write(rhport, 0xff, false);
-
-    // Enable IRQ
     hien_write(rhport, DEFAULT_HIEN, false);
-
-    tuh_max3421_int_api(rhport, true);
-
-    // Enable Interrupt pin
-    reg_write(rhport, CPUCTL_ADDR, _tuh_cfg.cpuctl | CPUCTL_IE, false);
+    hcd_int_enable(rhport);
 
     return true;
 }
@@ -512,7 +441,7 @@ bool hcd_deinit(uint8_t rhport)
     (void)rhport;
 
     // disable interrupt
-    tuh_max3421_int_api(rhport, false);
+    hcd_int_disable(rhport);
 
     // reset max3421 and power down
     reg_write(rhport, USBCTL_ADDR, USBCTL_CHIPRES, false);
@@ -526,18 +455,14 @@ bool hcd_deinit(uint8_t rhport)
     return true;
 }
 
-// Enable USB interrupt
-// Not actually enable GPIO interrupt, just set variable to prevent handler to process
 void hcd_int_enable(uint8_t rhport)
 {
-    tuh_max3421_int_api(rhport, true);
+    intEnabled = true;
 }
 
-// Disable USB interrupt
-// Not actually disable GPIO interrupt, just set variable to prevent handler to process
 void hcd_int_disable(uint8_t rhport)
 {
-    tuh_max3421_int_api(rhport, false);
+    intEnabled = false;
 }
 
 // Get frame number (1ms)
@@ -596,7 +521,6 @@ bool hcd_edpt_open(uint8_t rhport, uint8_t daddr, tusb_desc_endpoint_t const *ep
 
     uint8_t const ep_num = tu_edpt_number(ep_desc->bEndpointAddress);
     tusb_dir_t const ep_dir = tu_edpt_dir(ep_desc->bEndpointAddress);
-
     max3421_ep_t *ep;
     if (daddr == 0 && ep_num == 0)
     {
@@ -627,7 +551,7 @@ static void xact_out(uint8_t rhport, max3421_ep_t *ep, bool switch_ep, bool in_i
         reg_write(rhport, HCTL_ADDR, hctl, in_isr);
     }
 
-    if (!ep->naked)
+    if (!ep->retry_count)
     {
         if (xact_len > 0)
         {
@@ -697,8 +621,10 @@ static void xact_generic(uint8_t rhport, max3421_ep_t *ep, bool switch_ep, bool 
 // Submit a transfer, when complete hcd_event_xfer_complete() must be invoked
 bool hcd_edpt_xfer(uint8_t rhport, uint8_t daddr, uint8_t ep_addr, uint8_t *buffer, uint16_t buflen)
 {
+
     uint8_t const ep_num = tu_edpt_number(ep_addr);
     uint8_t const ep_dir = (uint8_t)tu_edpt_dir(ep_addr);
+
     max3421_ep_t *ep = find_opened_ep(daddr, ep_num, ep_dir);
     TU_VERIFY(ep);
 
@@ -714,6 +640,7 @@ bool hcd_edpt_xfer(uint8_t rhport, uint8_t daddr, uint8_t ep_addr, uint8_t *buff
     ep->total_len = buflen;
     ep->xferred_len = 0;
     ep->state = EP_STATE_ATTEMPT_1;
+    ep->retry_count = 0;
 
     // carry out transfer if not busy
     if (!atomic_flag_test_and_set(&_hcd_data.busy))
@@ -756,7 +683,6 @@ bool hcd_setup_send(uint8_t rhport, uint8_t daddr, uint8_t const setup_packet[8]
     ep->total_len = 8;
     ep->xferred_len = 0;
     ep->state = EP_STATE_ATTEMPT_1;
-
     // carry out transfer if not busy
     if (!atomic_flag_test_and_set(&_hcd_data.busy))
     {
@@ -877,7 +803,6 @@ static void handle_xfer_done(uint8_t rhport, bool in_isr)
 
     TU_VERIFY(ep, );
 
-
     if (ep_dir)
     {
         ep->data_toggle = (hrsl & HRSL_RCVTOGRD) ? 1u : 0u;
@@ -891,6 +816,7 @@ static void handle_xfer_done(uint8_t rhport, bool in_isr)
     switch (hresult)
     {
     case HRSL_NAK:
+        ep->retry_count++;
         if (ep->state == EP_STATE_ABORTING)
         {
             ep->state = EP_STATE_IDLE;
@@ -906,7 +832,6 @@ static void handle_xfer_done(uint8_t rhport, bool in_isr)
             else if (EP_STATE_ATTEMPT_1 <= ep->state && ep->state < EP_STATE_ATTEMPT_MAX)
             {
                 ep->state++;
-                ep->naked = true;
             }
         }
 
@@ -955,28 +880,22 @@ static void handle_xfer_done(uint8_t rhport, bool in_isr)
 
     if (ep_dir)
     {
-        // IN transfer: fifo data is already received in RCVDAV IRQ
-
-        // mark control handshake as complete
         if (hxfr_type & HXFR_HS)
         {
             ep->state = EP_STATE_COMPLETE;
         }
 
-        // short packet or all bytes transferred
         if (ep->state == EP_STATE_COMPLETE)
         {
             xfer_complete_isr(rhport, ep, xfer_result, hrsl, in_isr);
         }
         else
         {
-            // more to transfer
             hxfr_write(rhport, _hcd_data.hxfr, in_isr);
         }
     }
     else
     {
-        // SETUP or OUT transfer
         uint8_t xact_len;
 
         if (hxfr_type & HXFR_SETUP)
@@ -994,7 +913,7 @@ static void handle_xfer_done(uint8_t rhport, bool in_isr)
 
         ep->xferred_len += xact_len;
         ep->buf += xact_len;
-        ep->naked = false;
+        ep->retry_count = 0;
 
         if (xact_len < ep->packet_size || ep->xferred_len >= ep->total_len)
         {
@@ -1002,53 +921,23 @@ static void handle_xfer_done(uint8_t rhport, bool in_isr)
         }
         else
         {
-            // more to transfer
             xact_out(rhport, ep, false, in_isr);
         }
     }
 }
 
-#if CFG_TUSB_DEBUG >= 3
-void print_hirq(uint8_t hirq)
-{
-    TU_LOG3_HEX(hirq);
-
-    if (hirq & HIRQ_HXFRDN_IRQ)
-        TU_LOG3(" HXFRDN");
-    if (hirq & HIRQ_FRAME_IRQ)
-        TU_LOG3(" FRAME");
-    if (hirq & HIRQ_CONDET_IRQ)
-        TU_LOG3(" CONDET");
-    if (hirq & HIRQ_SUSDN_IRQ)
-        TU_LOG3(" SUSDN");
-    if (hirq & HIRQ_SNDBAV_IRQ)
-        TU_LOG3(" SNDBAV");
-    if (hirq & HIRQ_RCVDAV_IRQ)
-        TU_LOG3(" RCVDAV");
-    if (hirq & HIRQ_RWU_IRQ)
-        TU_LOG3(" RWU");
-    if (hirq & HIRQ_BUSEVENT_IRQ)
-        TU_LOG3(" BUSEVENT");
-
-    TU_LOG3("\r\n");
-}
-#else
-#define print_hirq(hirq)
-#endif
-
-// Interrupt handler
 void hcd_int_handler(uint8_t rhport, bool in_isr)
 {
+
     uint8_t hirq = reg_read(rhport, HIRQ_ADDR, in_isr) & _hcd_data.hien;
     if (!hirq)
+    {
         return;
-    //  print_hirq(hirq);
+    }
 
     if (hirq & HIRQ_FRAME_IRQ)
     {
         _hcd_data.frame_count++;
-
-        // reset all endpoints nak counter, retry with 1st pending ep.
         max3421_ep_t *ep_retry = NULL;
         for (size_t i = 0; i < CFG_TUH_MAX3421_ENDPOINT_TOTAL; i++)
         {
@@ -1064,25 +953,24 @@ void hcd_int_handler(uint8_t rhport, bool in_isr)
             }
         }
 
-        // start usb transfer if not busy
         if (ep_retry != NULL && !atomic_flag_test_and_set(&_hcd_data.busy))
         {
             xact_generic(rhport, ep_retry, true, in_isr);
         }
+        hirq_write(rhport, HIRQ_FRAME_IRQ, in_isr);
     }
 
     if (hirq & HIRQ_CONDET_IRQ)
     {
-        ESP_LOGI("MAX3421", "CONDET_IRQ rhport: %d", rhport);
         handle_connect_irq(rhport, in_isr);
+        hirq_write(rhport, HIRQ_CONDET_IRQ, in_isr);
     }
 
-    // queue more transfer in handle_xfer_done() can cause hirq to be set again while external IRQ may not catch and/or
-    // not call this handler again. So we need to loop until all IRQ are cleared
     while (hirq & (HIRQ_RCVDAV_IRQ | HIRQ_HXFRDN_IRQ))
     {
         if (hirq & HIRQ_RCVDAV_IRQ)
         {
+
             uint8_t const ep_num = _hcd_data.hxfr & HXFR_EPNUM_MASK;
             max3421_ep_t *ep = find_opened_ep(_hcd_data.peraddr, ep_num, 1);
             uint8_t xact_len = 0;
@@ -1117,12 +1005,5 @@ void hcd_int_handler(uint8_t rhport, bool in_isr)
         }
 
         hirq = reg_read(rhport, HIRQ_ADDR, in_isr);
-    }
-
-    // clear all interrupt except SNDBAV_IRQ (never clear by us). Note RCVDAV_IRQ, HXFRDN_IRQ already clear while processing
-    hirq &= (uint8_t)~HIRQ_SNDBAV_IRQ;
-    if (hirq)
-    {
-        hirq_write(rhport, hirq, in_isr);
     }
 }

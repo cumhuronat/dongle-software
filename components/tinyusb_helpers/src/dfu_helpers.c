@@ -25,7 +25,7 @@ void tud_dfu_download_cb(uint8_t alt, uint16_t block_num, uint8_t const* data, u
     (void) alt;
     (void) block_num;
 
-    ESP_LOGI(TAG, "Received Alt %u BlockNum %u of length %u", alt, block_num, length);
+    //ESP_LOGI(TAG, "Received Alt %u BlockNum %u of length %u", alt, block_num, length);
 
     esp_err_t ret = ota_start(data, length);
     if (ret == ESP_OK) {

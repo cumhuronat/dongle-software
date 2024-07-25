@@ -62,6 +62,9 @@
         "usb_wrap_reg.h": "c",
         "usb_wrap_struct.h": "c",
         "soc_pins.h": "c",
-        "esp_ota_ops.h": "c"
+        "esp_ota_ops.h": "c",
+        "uart.h": "c",
+        "stdatomic.h": "c",
+        "esp_rom_gpio.h": "c"
     }
 }
