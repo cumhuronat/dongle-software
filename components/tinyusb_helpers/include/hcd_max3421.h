@@ -6,18 +6,21 @@
 #include "esp_log.h"
 #include "esp_debug_helpers.h"
 #include "debug_helpers.h"
-#include "max3421_helpers.h"
 #include "macros.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_rom_gpio.h"
 #include "esp_mac.h"
-#include "hal/gpio_ll.h"
-#include "soc/usb_periph.h"
 #include "driver/gpio.h"
-#include "esp_private/periph_ctrl.h"
 #include "driver/spi_master.h"
 #include "esp_attr.h"
+
+#define MAX3421_INTR_PIN GPIO_NUM_9
+#define MAX3421_CS_PIN GPIO_NUM_10
+#define MAX3421_SPI_HOST SPI3_HOST
+#define MAX3421_MOSI_PIN GPIO_NUM_35
+#define MAX3421_MISO_PIN GPIO_NUM_37
+#define MAX3421_SCLK_PIN GPIO_NUM_36
+#define BOARD_TUH_RHPORT 1
 
 
 enum
