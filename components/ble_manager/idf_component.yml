@@ -1,0 +1,6 @@
+idf:
+  version: ">=4.1.0"
+
+dependencies:
+  esp-nimble-cpp:
+    git: "https://github.com/cumhuronat/esp-nimble-cpp"

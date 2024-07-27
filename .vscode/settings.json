@@ -65,7 +65,25 @@
         "esp_ota_ops.h": "c",
         "uart.h": "c",
         "stdatomic.h": "c",
-        "esp_rom_gpio.h": "c"
+        "esp_rom_gpio.h": "c",
+        "bitset": "cpp",
+        "format": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp",
+        "tuh_stream_processor.h": "c",
+        "cstring": "c",
+        "grbl_status_parser.h": "c",
+        "cstdio": "cpp",
+        "main.h": "c",
+        "ble_manager.h": "c",
+        "system_error": "cpp",
+        "chrono": "cpp",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "deque": "c",
+        "list": "c",
+        "vector": "c",
+        "portable.h": "c"
     },
     "idf.gitPathWin": "C:\\Users\\cumhur\\esp\\tools\\tools\\idf-git\\2.39.2\\cmd\\git.exe"
 }

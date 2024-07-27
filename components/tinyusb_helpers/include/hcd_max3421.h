@@ -237,10 +237,6 @@ typedef struct
 } max3421_data_t;
 
 
-
-
-EXTERN_C_BEGIN
 void print_endpoint_status(void);
 void log_debug_data();
 void log_action(const char *format, ...);
-EXTERN_C_END

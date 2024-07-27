@@ -1,8 +1,4 @@
 #pragma once
-#include "macros.h"
-
-EXTERN_C_BEGIN
-
 
 #ifndef CFG_TUSB_OS
 #define CFG_TUSB_OS OPT_OS_FREERTOS
@@ -61,4 +57,3 @@ EXTERN_C_BEGIN
 #define CFG_TUH_CDC_LINE_CODING_ON_ENUM                                        \
   { 115200, CDC_LINE_CONDING_STOP_BITS_1, CDC_LINE_CODING_PARITY_NONE, 8 }
 
-EXTERN_C_END
