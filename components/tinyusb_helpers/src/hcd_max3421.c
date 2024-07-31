@@ -1,6 +1,5 @@
 #include "hcd_max3421.h"
 
-
 static max3421_data_t _hcd_data;
 
 static tuh_configure_max3421_t _tuh_cfg = {
@@ -13,14 +12,14 @@ static spi_device_handle_t max3421_spi;
 SemaphoreHandle_t max3421_intr_sem;
 static bool intEnabled = false;
 
-
 static void max3421_intr_task(void *param)
 {
     (void)param;
 
     while (1)
     {
-        if(intEnabled) tuh_int_handler(BOARD_TUH_RHPORT, false);
+        if (intEnabled)
+            tuh_int_handler(BOARD_TUH_RHPORT, false);
         vTaskDelay(1);
     }
 }
@@ -40,8 +39,7 @@ static void spi_init(void)
         .data5_io_num = -1,
         .data6_io_num = -1,
         .data7_io_num = -1,
-        .max_transfer_sz = 1024
-        };
+        .max_transfer_sz = 1024};
     ESP_ERROR_CHECK(spi_bus_initialize(MAX3421_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
     spi_device_interface_config_t max3421_cfg = {
@@ -50,10 +48,9 @@ static void spi_init(void)
         .spics_io_num = MAX3421_CS_PIN,
         .queue_size = 1};
     ESP_ERROR_CHECK(spi_bus_add_device(MAX3421_SPI_HOST, &max3421_cfg, &max3421_spi));
-    
+
     xTaskCreatePinnedToCore(max3421_intr_task, "max3421 intr", 2048, NULL, configMAX_PRIORITIES - 2, NULL, 1);
 }
-
 
 static uint8_t IRAM_ATTR reg_read(uint8_t rhport, uint8_t reg, bool in_isr)
 {
@@ -77,7 +74,7 @@ static bool IRAM_ATTR reg_write(uint8_t rhport, uint8_t reg, uint8_t data, bool 
 {
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
-    t.length = 2*8;
+    t.length = 2 * 8;
     t.tx_data[0] = reg | CMDBYTE_WRITE;
     t.tx_data[1] = data;
     t.flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
@@ -97,10 +94,10 @@ static void IRAM_ATTR fifo_write(uint8_t rhport, uint8_t reg, uint8_t const *buf
     memcpy(&tx_buf[1], buffer, len);
 
     uint8_t rx_buf[1 + len];
-    
+
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
-    t.length = 8 + len*8;
+    t.length = 8 + len * 8;
     t.tx_buffer = tx_buf;
     t.rx_buffer = rx_buf;
 
@@ -121,16 +118,15 @@ static void IRAM_ATTR fifo_read(uint8_t rhport, uint8_t *buffer, uint16_t len, b
 
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
-    t.length = 8 + len*8;
+    t.length = 8 + len * 8;
     t.tx_buffer = tx_buf;
     t.rx_buffer = rx_buf;
-
 
     spi_device_acquire_bus(max3421_spi, portMAX_DELAY);
     ESP_ERROR_CHECK(spi_device_polling_transmit(max3421_spi, &t));
     spi_device_release_bus(max3421_spi);
     _hcd_data.hirq = rx_buf[0];
-    memcpy(buffer, rx_buf+1, len);
+    memcpy(buffer, rx_buf + 1, len);
 }
 
 //------------- register write helper -------------//
@@ -407,6 +403,18 @@ bool hcd_configure(uint8_t rhport, uint32_t cfg_id, const void *cfg_param)
 bool hcd_init(uint8_t rhport)
 {
     (void)rhport;
+
+    gpio_config_t io_conf = {};
+    io_conf.intr_type = GPIO_INTR_DISABLE;               // Disable interrupt
+    io_conf.mode = GPIO_MODE_OUTPUT;                     // Set as output mode
+    io_conf.pin_bit_mask = (1ULL << MAX3421_VBUSEN_PIN); // Bit mask of the pin
+    io_conf.pull_down_en = 0;                            // Disable pull-down mode
+    io_conf.pull_up_en = 0;                              // Disable pull-up mode
+
+    esp_err_t ret = gpio_config(&io_conf);
+
+    gpio_set_level(MAX3421_VBUSEN_PIN, 1);
+
     hcd_int_disable(rhport);
     spi_init();
 

@@ -7,12 +7,11 @@ static const char *TAG = "AUTO_RESET";
 
 void switch_to_jtag(void)
 {
-    ESP_LOGI(TAG, "Switching to JTAG mode");
+    REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
     usb_del_phy(phy_hdl);
     phy_conf.controller = USB_PHY_CTRL_SERIAL_JTAG;
     phy_conf.otg_mode = USB_PHY_MODE_DEFAULT;
     usb_new_phy(&phy_conf, &phy_hdl);
-    REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
     esp_restart();
 }
 

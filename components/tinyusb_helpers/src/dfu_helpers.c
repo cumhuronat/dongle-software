@@ -1,5 +1,5 @@
 #include "dfu_helpers.h"
-
+#if CFG_TUD_DFU
 #define FLASH_SECTOR_SIZE 4096
 #define BUFFER_SIZE 4096
 
@@ -50,3 +50,5 @@ void tud_dfu_manifest_cb(uint8_t alt)
         tud_dfu_finish_flashing(DFU_STATUS_ERR_VERIFY);
     }
 }
+
+#endif

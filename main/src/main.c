@@ -40,10 +40,10 @@ void writeCommandReadTask(void *pvParameters)
         {
 
             ESP_LOGI("CDC_TASK", "Received command: %s", command);
-            tuh_cdc_write(0,command, strlen(command));
-            tuh_cdc_write(0,"\n", 1);
+            tuh_cdc_write(0, command, strlen(command));
+            tuh_cdc_write(0, "\n", 1);
             tuh_cdc_write_flush(0);
-            
+
             free(command);
         }
 
@@ -94,8 +94,24 @@ void tuhReadTask(void *pvParameters)
     }
 }
 
+int cdc_vprintf(const char *format, va_list args)
+{
+    char buffer[256];
+    int len = vsnprintf(buffer, sizeof(buffer), format, args);
+    if (len > 0)
+    {
+        if (tud_cdc_n_connected(1))
+        {
+            tud_cdc_n_write(1, buffer, len);
+            tud_cdc_n_write_flush(1);
+        }
+    }
+    return len;
+}
+
 void app_main(void)
 {
+    esp_log_set_vprintf(cdc_vprintf);
     switch_to_tinyusb();
     tusb_init();
     tud_disconnect();
@@ -115,31 +131,37 @@ void app_main(void)
 
 void tud_cdc_rx_cb(uint8_t itf)
 {
-    xSemaphoreGive(xSemaphoreTUD);
+    if (itf == 0) xSemaphoreGive(xSemaphoreTUD);
 }
 
 void tud_cdc_tx_complete_cb(uint8_t itf)
 {
-    xSemaphoreGive(xSemaphoreTUD);
+    if (itf == 0) xSemaphoreGive(xSemaphoreTUD);
 }
 
 void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *line_coding)
 {
     if (line_coding->bit_rate == 123123)
     {
+        tud_deinit(0);
+        tuh_deinit(1);
         switch_to_jtag();
     }
 }
 
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
-    uint16_t const line_state = (dtr ? CDC_CONTROL_LINE_STATE_DTR : 0) |
-                                (rts ? CDC_CONTROL_LINE_STATE_RTS : 0);
-    tuh_cdc_set_control_line_state(0, line_state, NULL, 0);
+    if (itf == 0)
+    {
+        uint16_t const line_state = (dtr ? CDC_CONTROL_LINE_STATE_DTR : 0) |
+                                    (rts ? CDC_CONTROL_LINE_STATE_RTS : 0);
+        tuh_cdc_set_control_line_state(0, line_state, NULL, 0);
+    }
 }
 
 void tuh_cdc_mount_cb(uint8_t idx)
 {
+    ESP_LOGW("CDC_TASK", "Mounting CDC interface");
     tud_connect();
     tuh_cdc_set_baudrate(idx, 115200, NULL, 0);
 }

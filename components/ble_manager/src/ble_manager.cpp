@@ -7,8 +7,6 @@ BLEManager::BLEManager()
 {
 }
 
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-
 struct CharacteristicInfo
 {
     const char *uuid;
@@ -17,31 +15,31 @@ struct CharacteristicInfo
 };
 
 std::map<UpdateType, CharacteristicInfo> characteristicMap = {
-    {STATUS_UPDATE, {"00000001-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {STATUS_UPDATE, {CHARACTERISTIC_STATUS_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                      {
                          c->setValue(m.data.statusUpdate);
                      }}},
-    {WPOS_UPDATE, {"00000002-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {WPOS_UPDATE, {CHARACTERISTIC_WPOS_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                    {
                        c->setValue(m.data.wposUpdate);
                    }}},
-    {FS_UPDATE, {"00000003-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {FS_UPDATE, {CHARACTERISTIC_FS_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                  {
                      c->setValue(m.data.fsUpdate);
                  }}},
-    {PIN_UPDATE, {"00000004-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {PIN_UPDATE, {CHARACTERISTIC_PIN_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                   {
                       c->setValue(m.data.pinUpdate);
                   }}},
-    {QUEUE_ITEMS_UPDATE, {"00000005-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {QUEUE_ITEMS_UPDATE, {CHARACTERISTIC_QUEUE_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                           {
                               c->setValue(m.data.queueItemsUpdate);
                           }}},
-    {WCO_UPDATE, {"00000006-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {WCO_UPDATE, {CHARACTERISTIC_WCO_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                   {
                       c->setValue(m.data.wcoUpdate);
                   }}},
-    {OV_UPDATE, {"00000007-0000-1000-8000-00805f9b34fb", nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+    {OV_UPDATE, {CHARACTERISTIC_OV_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                  {
                      c->setValue(m.data.ovUpdate);
                  }}}};
@@ -100,7 +98,7 @@ void BLEManager::init()
         pair.second.characteristic = createCharacteristic(pService, pair.second.uuid);
     }
 
-    NimBLECharacteristic *writeCharacteristics = pService->createCharacteristic("00000000-0000-1000-8000-00805f9b34fb", NIMBLE_PROPERTY::WRITE_NR);
+    NimBLECharacteristic *writeCharacteristics = pService->createCharacteristic(CHARACTERISTIC_WRITE_UUID, NIMBLE_PROPERTY::WRITE_NR);
     writeCharacteristics->setCallbacks(&sendCommandCallback);
 
     pService->start();
@@ -111,7 +109,7 @@ void BLEManager::init()
 
     BLEDevice::startAdvertising();
 
-    writeCommandQueue = xQueueCreate(10, sizeof(char*));
+    writeCommandQueue = xQueueCreate(10, sizeof(char *));
 
     xTaskCreate(
         ble_manager_task,
