@@ -35,6 +35,10 @@ std::map<UpdateType, CharacteristicInfo> characteristicMap = {
                           {
                               c->setValue(m.data.queueItemsUpdate);
                           }}},
+    {ACCESSORY_ITEMS_UPDATE, {CHARACTERISTIC_ACCESSORY_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
+                              {
+                                  c->setValue(m.data.accessoryUpdate);
+                              }}},
     {WCO_UPDATE, {CHARACTERISTIC_WCO_UUID, nullptr, [](BLECharacteristic *c, const UpdateMessage &m)
                   {
                       c->setValue(m.data.wcoUpdate);
@@ -48,27 +52,15 @@ class SendCommandCharacteristicsCallback : public NimBLECharacteristicCallbacks
 {
     void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo &connInfo)
     {
-        if (strlen(pCharacteristic->getValue().c_str()) < 256)
-        {
-            char *command = strdup(pCharacteristic->getValue().c_str());
-            if (!xQueueSend(writeCommandQueue, &command, portMAX_DELAY))
-            {
-                free(command);
-            }
-        }
-
-        pCharacteristic->setValue("");
+        const char* data = (const char*)pCharacteristic->getValue().data();
+        Command command = {};
+        strncpy(command.command, data, pCharacteristic->getValue().length());
+        
+        xQueueSend(writeCommandQueue, &command, 0);
     }
 };
 
 static SendCommandCharacteristicsCallback sendCommandCallback;
-
-BLECharacteristic *createCharacteristic(BLEService *pService, const char *uuid)
-{
-    return pService->createCharacteristic(
-        uuid,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
-}
 
 void ble_manager_task(void *pvParameters)
 {
@@ -95,7 +87,7 @@ void BLEManager::init()
 
     for (auto &pair : characteristicMap)
     {
-        pair.second.characteristic = createCharacteristic(pService, pair.second.uuid);
+        pair.second.characteristic = pService->createCharacteristic(pair.second.uuid, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     }
 
     NimBLECharacteristic *writeCharacteristics = pService->createCharacteristic(CHARACTERISTIC_WRITE_UUID, NIMBLE_PROPERTY::WRITE_NR);
@@ -109,7 +101,7 @@ void BLEManager::init()
 
     BLEDevice::startAdvertising();
 
-    writeCommandQueue = xQueueCreate(10, sizeof(char *));
+    writeCommandQueue = xQueueCreate(200, sizeof(Command));
 
     xTaskCreate(
         ble_manager_task,

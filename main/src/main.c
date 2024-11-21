@@ -33,21 +33,16 @@ void buttonTask(void *pvParameters)
 }
 void writeCommandReadTask(void *pvParameters)
 {
-    char *command;
+    Command command;
     while (1)
     {
         if (xQueueReceive(writeCommandQueue, &command, portMAX_DELAY))
         {
 
-            ESP_LOGI("CDC_TASK", "Received command: %s", command);
-            tuh_cdc_write(0, command, strlen(command));
+            tuh_cdc_write(0, command.command, strlen(command.command));
             tuh_cdc_write(0, "\n", 1);
             tuh_cdc_write_flush(0);
-
-            free(command);
         }
-
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 

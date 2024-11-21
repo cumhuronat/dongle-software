@@ -23,7 +23,7 @@ typedef struct {
 } FSUpdate;
 
 typedef struct {
-    bool x, y1, y2, z, h;
+    int p, x, y1, y2, z, h;
 } PinUpdate;
 
 typedef struct {
@@ -31,8 +31,16 @@ typedef struct {
 } QueueItemsUpdate;
 
 typedef struct {
+    int coolant;
+} AccessoryUpdate;
+
+typedef struct {
     float x, y, z;
 } WCOUpdate;
+
+typedef struct {
+    char command[128];
+} Command;
 
 typedef struct {
     int feed, rapid, spindle;
@@ -45,6 +53,7 @@ typedef enum {
     FS_UPDATE,
     PIN_UPDATE,
     QUEUE_ITEMS_UPDATE,
+    ACCESSORY_ITEMS_UPDATE,
     WCO_UPDATE,
     OV_UPDATE
 } UpdateType;
@@ -57,6 +66,7 @@ typedef struct {
         FSUpdate fsUpdate;
         PinUpdate pinUpdate;
         QueueItemsUpdate queueItemsUpdate;
+        AccessoryUpdate accessoryUpdate;
         WCOUpdate wcoUpdate;
         OvUpdate ovUpdate;
     } data;
