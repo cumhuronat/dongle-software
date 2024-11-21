@@ -48,7 +48,7 @@ void stream_processor_init(void)
     xQueueUpdates = xQueueCreate(10, sizeof(UpdateMessage));
 }
 
-void process_received_data(uint8_t *buffer, size_t length)
+void process_received_data(const uint8_t *buffer, size_t length)
 {
     static char lineBuffer[128];
     static size_t lineBufferIndex = 0;
@@ -101,7 +101,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.statusUpdate = statusUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 strncpy(currentStatusUpdate.status, statusUpdate.status, sizeof(currentStatusUpdate.status) - 1);
-                ESP_LOGI(TAG, "Status: %s", statusUpdate.status);
+                ESP_LOGD(TAG, "Status: %s", statusUpdate.status);
             }
         } else if (strncmp(segment, "WPos:", 5) == 0) {
             WPosUpdate wposUpdate = {};
@@ -113,7 +113,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.wposUpdate = wposUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 currentWPosUpdate = wposUpdate;
-                ESP_LOGI(TAG, "WPos: X=%.3f Y=%.3f Z=%.3f", wposUpdate.x, wposUpdate.y, wposUpdate.z);
+                ESP_LOGD(TAG, "WPos: X=%.3f Y=%.3f Z=%.3f", wposUpdate.x, wposUpdate.y, wposUpdate.z);
             }
         } else if (strncmp(segment, "FS:", 3) == 0) {
             FSUpdate fsUpdate = {};
@@ -124,7 +124,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.fsUpdate = fsUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 currentFSUpdate = fsUpdate;
-                ESP_LOGI(TAG, "FS: Feed=%.3f Speed=%.3f", fsUpdate.feedRate, fsUpdate.spindleSpeed);
+                ESP_LOGD(TAG, "FS: Feed=%.3f Speed=%.3f", fsUpdate.feedRate, fsUpdate.spindleSpeed);
             }
         } else if (strncmp(segment, "Pn:", 3) == 0) {
             PinUpdate pinUpdate = {};
@@ -138,7 +138,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.pinUpdate = pinUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 currentPinUpdate = pinUpdate;
-                ESP_LOGI(TAG, "Pin: X=%d Y1=%d Y2=%d Z=%d H=%d", pinUpdate.x, pinUpdate.y1, pinUpdate.y2, pinUpdate.z, pinUpdate.h);
+                ESP_LOGD(TAG, "Pin: X=%d Y1=%d Y2=%d Z=%d H=%d", pinUpdate.x, pinUpdate.y1, pinUpdate.y2, pinUpdate.z, pinUpdate.h);
             }
         } else if (strncmp(segment, "Q:", 2) == 0) {
             QueueItemsUpdate queueItemsUpdate = {};
@@ -148,7 +148,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.queueItemsUpdate = queueItemsUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 currentQueueItemsUpdate.queueItems = queueItemsUpdate.queueItems;
-                ESP_LOGI(TAG, "QueueItems: %d", queueItemsUpdate.queueItems);
+                ESP_LOGD(TAG, "QueueItems: %d", queueItemsUpdate.queueItems);
             }
         } else if (strncmp(segment, "WCO:", 4) == 0) {
             WCOUpdate wcoUpdate = {};
@@ -160,7 +160,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.wcoUpdate = wcoUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 currentWCOUpdate = wcoUpdate;
-                ESP_LOGI(TAG, "WCO: X=%.3f Y=%.3f Z=%.3f", wcoUpdate.x, wcoUpdate.y, wcoUpdate.z);
+                ESP_LOGD(TAG, "WCO: X=%.3f Y=%.3f Z=%.3f", wcoUpdate.x, wcoUpdate.y, wcoUpdate.z);
             }
         } else if (strncmp(segment, "Ov:", 3) == 0) {
             OvUpdate ovUpdate = {};
@@ -172,7 +172,7 @@ void parse_status(char *statusString) {
                 updateMessage.data.ovUpdate = ovUpdate;
                 xQueueSend(xQueueUpdates, &updateMessage, 0);
                 currentOvUpdate = ovUpdate;
-                ESP_LOGI(TAG, "Ov: Feed=%d Rapid=%d Spindle=%d", ovUpdate.feed, ovUpdate.rapid, ovUpdate.spindle);
+                ESP_LOGD(TAG, "Ov: Feed=%d Rapid=%d Spindle=%d", ovUpdate.feed, ovUpdate.rapid, ovUpdate.spindle);
             }
         }
     }

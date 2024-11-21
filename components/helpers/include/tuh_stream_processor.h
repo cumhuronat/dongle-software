@@ -67,4 +67,4 @@ extern QueueHandle_t xQueueUpdates;
 
 void parse_status(char *statusString);
 void stream_processor_init(void);
-void process_received_data(uint8_t *buffer, size_t length);
+void process_received_data(const uint8_t *buffer, size_t length);
