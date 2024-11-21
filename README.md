@@ -1,32 +1,74 @@
-# _Sample project_
+# USB Dongle Firmware for OpenPendant
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+This repository contains the firmware for the USB dongle component of the OpenPendant system. The dongle serves as a bridge between a computer and the OpenPendant device, enabling seamless communication and control.
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+## Overview
 
+The USB dongle firmware is built using the ESP-IDF framework and is designed to OSS OpenPendant dongle hardware. It handles USB communication with the host computer and wireless communication with the pendant device.
 
+## Hardware
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+The hardware designs for this project, including PCB layouts and enclosure models, are open-source and available at:
+https://github.com/cumhuronat/mr-1-openpendant/tree/main/dongle
 
-## Example folder contents
+You can find:
+- PCB design files (.pcb)
+- 3D printable enclosure files (.f3d)
 
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+## Features
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
+- USB CDC (Communications Device Class) implementation for computer connectivity
+- Wireless communication with the OpenPendant device
+- Real-time data transmission and reception
+- Configurable settings for different pendant modes
+- Automatic device discovery and pairing
+- Firmware update capability
 
-Below is short explanation of remaining files in the project folder.
+## Prerequisites
+
+To build and flash this firmware, you'll need:
+
+- ESP-IDF development framework
+- Python 3.x
+- CMake
+- A compatible USB-to-Serial adapter (for initial flashing)
+- Visual Studio Code with ESP-IDF extension (recommended)
+
+## Project Structure
 
 ```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
+dongle-software/
+├── components/         # Custom and third-party components
+├── main/              # Main application source code
+├── managed_components/# ESP-IDF managed components
+├── CMakeLists.txt     # Project CMake configuration
+├── sdkconfig          # Project configuration
+└── reboot_and_flash.py# Utility script for flashing
 ```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+
+## Building and Flashing
+
+1. Set up the ESP-IDF environment
+2. Clone this repository
+3. Configure the project (optional):
+   ```
+   idf.py menuconfig
+   ```
+4. Build the project:
+   ```
+   idf.py build
+   ```
+5. Flash the firmware:
+   ```
+   idf.py -p [PORT] flash
+   ```
+   Or use the provided `reboot_and_flash.py` script for automated flashing.
+
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+
+## Support
+
+For questions and support, please open an issue in the GitHub repository.
